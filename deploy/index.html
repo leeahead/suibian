@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fafaf8">
+<title>碎片记忆</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  --bg:#fafaf8; --ink:#1c1c1a; --ink2:#5c5c58; --ink3:#8c8c86;
+  --line:#e6e6e0; --line2:#f0f0ea; --card:#ffffff; --warn:#8a6a2a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+button{background:none;border:none;padding:0;cursor:pointer}
+
+#app{max-width:640px;margin:0 auto;padding:0 18px calc(84px + env(safe-area-inset-bottom))}
+.screen{display:none}
+.screen.on{display:block}
+
+.top{padding:calc(20px + env(safe-area-inset-top)) 0 10px;display:flex;align-items:baseline;gap:10px}
+.top h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.01em}
+.top .sub{color:var(--ink3);font-size:13px}
+
+/* ── 记录屏 ── */
+.enter{margin:6px 0 18px}
+.enter textarea{width:100%;min-height:96px;padding:14px 15px;border:1px solid var(--line);
+  border-radius:12px;background:var(--card);resize:none;line-height:1.65;outline:none;
+  transition:border-color .15s}
+.enter textarea:focus{border-color:#c9c9c2}
+.enter textarea::placeholder{color:#b6b6ae}
+.row{display:flex;align-items:center;gap:10px;margin-top:10px}
+.grow{flex:1}
+.btn{padding:11px 18px;border-radius:10px;background:var(--ink);color:#fafaf8;font-weight:500;
+  letter-spacing:.02em;transition:opacity .15s}
+.btn:disabled{opacity:.28}
+.btn.ghost{background:none;color:var(--ink2);border:1px solid var(--line)}
+.btn.sm{padding:7px 12px;font-size:14px;border-radius:8px}
+.chip{padding:3px 9px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--ink2);
+  background:var(--card);display:inline-flex;align-items:center;gap:6px}
+.chip button{color:var(--ink3);font-size:14px;line-height:1}
+.hint{color:var(--ink3);font-size:13px;margin-top:8px;min-height:18px}
+
+/* ── 总结屏 ── */
+.banner{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--card);
+  margin:0 0 18px;display:flex;align-items:center;gap:12px}
+.banner .t{flex:1;font-size:14px;color:var(--ink2)}
+.banner.unread{border-color:#d8d8d0}
+
+.sheet{border:1px solid var(--line);border-radius:14px;background:var(--card);
+  padding:18px 18px 6px;margin:0 0 26px}
+.sheet .hd{display:flex;align-items:baseline;gap:10px;margin-bottom:2px}
+.sheet .hd .title{font-size:15px;font-weight:600}
+.sheet .hd .date{color:var(--ink3);font-size:13px;margin-left:auto}
+.sheet .lead{color:var(--ink3);font-size:13px;margin:0 0 14px}
+.kou{margin:0 0 20px}
+.item.hist{cursor:pointer}
+.item.hist .x{color:var(--ink2)}
+.kou .kt{font-size:12px;color:var(--ink3);letter-spacing:.08em;margin-bottom:7px;
+  display:flex;align-items:baseline;gap:8px}
+.kou .kt .sw{margin-left:auto;font-size:11px;letter-spacing:0;border:1px solid var(--line);
+  border-radius:999px;padding:1px 7px;color:var(--ink3);cursor:pointer}
+.kou .kt .sw.off{opacity:.45}
+.kou p{margin:0 0 9px;line-height:1.75}
+.kou p .q{color:var(--ink)}
+.kou p .src{color:var(--ink3);font-size:12px;margin-left:6px;white-space:nowrap;
+  border-bottom:1px dotted var(--line);cursor:pointer}
+.kou.off{display:none}
+
+/* ── 列表 ── */
+.sec{font-size:12px;color:var(--ink3);letter-spacing:.08em;margin:26px 0 10px;
+  display:flex;align-items:baseline;gap:10px}
+.sec .n{margin-left:auto;font-size:12px;letter-spacing:0}
+.item{padding:11px 0;border-bottom:1px solid var(--line2)}
+.item:last-child{border-bottom:none}
+.item .m{display:flex;gap:10px;align-items:baseline;color:var(--ink3);font-size:12px;margin-bottom:3px}
+.item .m .tag{border:1px solid var(--line);border-radius:999px;padding:0 7px;color:var(--ink3)}
+.item .x{line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.item .x.quote{color:var(--ink)}
+.item.att .x{color:var(--ink2)}
+.empty{color:var(--ink3);font-size:14px;padding:18px 0;line-height:1.8}
+
+/* ── 对话 / 评价（一屏两个模式） ── */
+.modes{display:flex;gap:6px;margin:4px 0 16px}
+.mode{padding:6px 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;
+  color:var(--ink2);background:var(--card);transition:background .12s,color .12s}
+.mode.on{background:var(--ink);border-color:var(--ink);color:#fafaf8}
+.chatbox{display:flex;flex-direction:column;gap:14px;padding:4px 0 8px}
+.msg{max-width:86%}
+.msg .who{font-size:12px;color:var(--ink3);margin-bottom:4px}
+.msg .who .tag{border:1px solid var(--line);border-radius:999px;padding:0 7px;margin-left:6px}
+.msg.wait .b{color:var(--ink3)}
+.more{margin:0 0 18px}
+.more button{border:1px solid var(--line);border-radius:999px;background:var(--card);
+  padding:6px 14px;font-size:13px;color:var(--ink2)}
+.msg .b{padding:10px 13px;border-radius:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+.msg.me{align-self:flex-end}
+.msg.me .who{text-align:right}
+.msg.me .b{background:var(--ink);color:#fafaf8;border-bottom-right-radius:4px}
+.msg.her .b{background:var(--card);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg .fold{font-size:12px;color:var(--ink3);margin-top:5px}
+.msg .fold button{border-bottom:1px dotted var(--line);color:var(--ink2)}
+.msg .fold .done{color:var(--ink3)}
+
+/* 设置屏 */
+.card{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:15px 16px;margin-bottom:12px}
+.card .name{font-weight:600;font-size:15px}
+.card .sub{color:var(--ink3);font-size:13px;margin-top:3px;word-break:break-all}
+.card .acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.form{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:15px 16px;margin-bottom:12px}
+.form label{display:block;font-size:12px;color:var(--ink3);letter-spacing:.06em;margin:12px 0 5px}
+.form label:first-child{margin-top:0}
+.form input,.form select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+  background:var(--bg);outline:none}
+.form input:focus,.form select:focus{border-color:#c9c9c2}
+.form .row{margin-top:14px}
+.datarow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line2)}
+.datarow:last-child{border-bottom:none}
+.datarow .k{flex:1;font-size:14px}
+.datarow .v{color:var(--ink3);font-size:13px}
+.warnline{color:var(--warn);font-size:13px;margin-top:6px;line-height:1.7}
+
+.check{border:1px solid var(--line);border-radius:12px;background:var(--card);margin-top:12px;overflow:hidden}
+.check .ch{padding:12px 15px;border-bottom:1px solid var(--line2);font-size:13px;color:var(--ink2)}
+.check table{width:100%;border-collapse:collapse;font-size:13px}
+.check td{padding:9px 15px;border-bottom:1px solid var(--line2);vertical-align:top}
+.check tr:last-child td{border-bottom:none}
+.check td.k{color:var(--ink3);white-space:nowrap;width:38%}
+.check .verdict{padding:12px 15px;font-size:14px}
+.check .verdict.bad{color:#8a2a2a}
+.check .verdict.good{color:#2a5a2a}
+.check .quote{padding:0 15px 12px;color:var(--ink3);font-size:12px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-word}
+
+/* ── 底部标签 ── */
+/* 不用 backdrop-filter：安卓上它每帧都要重算底下的模糊，是滚动卡顿的常见来源。
+   这个配色下纯色底看不出差别。 */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--bg);
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:20}
+.tabs .in{max-width:640px;margin:0 auto;display:flex}
+.tab{flex:1;padding:11px 4px 13px;text-align:center;font-size:12px;color:var(--ink3);letter-spacing:.04em}
+.tab.on{color:var(--ink);font-weight:600}
+.tab .dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--ink);
+  vertical-align:middle;margin-left:4px}
+
+#toast{position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(8px);
+  background:var(--ink);color:#fafaf8;padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;
+  transition:opacity .2s,transform .2s;pointer-events:none;z-index:40;max-width:88vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.dim{color:var(--ink3)}
+.tiny{font-size:12px;color:var(--ink3);line-height:1.8}
+.spin::after{content:'';display:inline-block;width:11px;height:11px;margin-left:8px;
+  border:1.5px solid rgba(250,250,248,.4);border-top-color:#fafaf8;border-radius:50%;
+  animation:sp .7s linear infinite;vertical-align:-1px}
+.btn.ghost.spin::after{border-color:rgba(28,28,26,.25);border-top-color:var(--ink2)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══ 记录屏（默认落点） ═══ -->
+  <section class="screen" id="s-record">
+    <div class="top"><h1>碎片记忆</h1><span class="sub" id="rec-day"></span></div>
+
+    <div id="rec-banner"></div>
+
+    <div class="enter">
+      <textarea id="rec-text" placeholder="想到什么就打什么。写错也没关系。" autocomplete="off"></textarea>
+      <div class="row">
+        <button class="btn ghost sm" id="rec-file">图片 / 文档</button>
+        <div class="grow" id="rec-chips"></div>
+        <button class="btn" id="rec-save" disabled>记下</button>
+      </div>
+      <div class="hint" id="rec-hint"></div>
+      <input type="file" id="rec-input" class="visually-hidden" multiple
+             accept="image/*,.txt,.md,.pdf,.doc,.docx">
+    </div>
+
+    <div class="sec">这一天的碎片<span class="n" id="rec-count"></span></div>
+    <div id="rec-list"></div>
+  </section>
+
+  <!-- ═══ 总结屏（有自己的一页，永远点得到） ═══ -->
+  <section class="screen" id="s-summary">
+    <div class="top"><h1>总结</h1><span class="sub" id="sum-sub"></span></div>
+    <div id="sum-body"></div>
+  </section>
+
+  <!-- ═══ 对话屏（对话与评价合在这里，两个模式） ═══ -->
+  <section class="screen" id="s-chat">
+    <div class="top"><h1>对话</h1><span class="sub" id="talk-sub">这里的话不进记忆，除非你亲手指定</span></div>
+    <div class="modes" id="talk-modes">
+      <button class="mode on" data-mode="chat">对话</button>
+      <button class="mode" data-mode="fb">评价</button>
+    </div>
+    <div class="chatbox" id="chat-list"></div>
+    <div class="enter" style="margin-top:18px">
+      <textarea id="chat-text" placeholder="跟她说点什么。" autocomplete="off"></textarea>
+      <div class="row">
+        <div class="grow"></div>
+        <button class="btn" id="chat-send" disabled>说</button>
+      </div>
+      <div class="hint" id="chat-hint"></div>
+    </div>
+  </section>
+
+  <!-- ═══ 设置屏 ═══ -->
+  <section class="screen" id="s-settings">
+    <div class="top"><h1>设置</h1></div>
+    <div id="set-body"></div>
+  </section>
+
+</div>
+
+<nav class="tabs" id="tabs">
+  <div class="in">
+    <button class="tab on" data-view="record">记录</button>
+    <button class="tab" data-view="summary">总结<span class="dot" id="tab-dot" hidden></span></button>
+    <button class="tab" data-view="chat">对话</button>
+    <button class="tab" data-view="settings">设置</button>
+  </div>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════════════
+   碎片记忆 · 真数据版（A 阶段 / 架构 v3：纯前端 PWA）
+   ───────────────────────────────────────────────────────────────────
+   数据全部在浏览器 IndexedDB 里，没有服务端。
+   因此三件事必须靠应用自己兜住：导出、导入、导出提醒（共识 11.6）。
+   密钥存在本机，导出时显式剔除（共识 12.2）。
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ───────────── 工具 ───────────── */
+
+const $ = (id) => document.getElementById(id);
+const now = () => Date.now();
+const ISO = () => new Date().toISOString();
+
+function dayKey(d) {
+  const x = d instanceof Date ? d : new Date(d);
+  const p = (n) => String(n).padStart(2, '0');
+  return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate());
+}
+
+function hhmm(ts) {
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function dayCN(day) {
+  const [y, m, d] = day.split('-').map(Number);
+  const today = dayKey(new Date());
+  const yest = dayKey(new Date(Date.now() - 864e5));
+  if (day === today) return '今天';
+  if (day === yest) return '昨天';
+  return m + ' 月 ' + d + ' 日';
+}
+
+function uid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function toast(msg, ms = 2200) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+function bytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+
+function ago(ts) {
+  if (!ts) return '从未';
+  const s = Math.floor((now() - ts) / 1000);
+  if (s < 60) return '刚刚';
+  if (s < 3600) return Math.floor(s / 60) + ' 分钟前';
+  if (s < 86400) return Math.floor(s / 3600) + ' 小时前';
+  return Math.floor(s / 86400) + ' 天前';
+}
+
+/* ───────────── 存储层：IndexedDB ─────────────
+   store 划分见共识第 13 章。summary 是 v3 补上的（v2 漏了这张表）。 */
+
+const DB_NAME = 'suipian', DB_VER = 1;
+const STORES = {
+  evidence:   { key: 'id', idx: [['day', 'day'], ['ts', 'ts'], ['source', 'source']] },
+  attachment: { key: 'id', idx: [['ts', 'ts']] },
+  chat:       { key: 'id', idx: [['ts', 'ts']] },
+  judgment:   { key: 'id', idx: [['version', 'version']] },   // 本阶段建空表预留
+  provider:   { key: 'id', idx: [] },
+  feedback:   { key: 'id', idx: [['ts', 'ts'], ['target_id', 'target_id']] },
+  summary:    { key: 'id', idx: [['day', 'day'], ['created_at', 'created_at']] },
+  meta:       { key: 'k', idx: [] },
+};
+
+let DBH = null;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open(DB_NAME, DB_VER);
+    rq.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      for (const name of Object.keys(STORES)) {
+        if (db.objectStoreNames.contains(name)) continue;
+        const cfg = STORES[name];
+        const s = db.createObjectStore(name, { keyPath: cfg.key });
+        for (const [iname, path] of cfg.idx) s.createIndex(iname, path, { unique: false });
+      }
+    };
+    rq.onsuccess = () => { DBH = rq.result; res(rq.result); };
+    rq.onerror = () => rej(rq.error);
+  });
+}
+
+/* 每个 store 一个独立 transaction —— 简单、够用、不会因 await 而自动关闭 */
+function dbPut(store, obj) {
+  return new Promise((res, rej) => {
+    const t = DBH.transaction(store, 'readwrite');
+    t.objectStore(store).put(obj);
+    t.oncomplete = () => res(true);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((res, rej) => {
+    const t = DBH.transaction(store, 'readonly');
+    const r = t.objectStore(store).get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+
+function dbAll(store) {
+  return new Promise((res, rej) => {
+    const t = DBH.transaction(store, 'readonly');
+    const r = t.objectStore(store).getAll();
+    r.onsuccess = () => res(r.result || []);
+    r.onerror = () => rej(r.error);
+  });
+}
+
+function dbDel(store, key) {
+  return new Promise((res, rej) => {
+    const t = DBH.transaction(store, 'readwrite');
+    t.objectStore(store).delete(key);
+    t.oncomplete = () => res(true);
+    t.onerror = () => rej(t.error);
+  });
+}
+
+/* 导入用：只在 id 不存在时写入。返回 true=新增，false=已存在被跳过 */
+function dbAddIfNew(store, obj) {
+  return new Promise((res, rej) => {
+    const t = DBH.transaction(store, 'readwrite');
+    const r = t.objectStore(store).add(obj);
+    r.onsuccess = () => res(true);
+    r.onerror = (e) => { e.preventDefault(); e.stopPropagation(); res(false); };
+    t.onerror = () => res(false);
+  });
+}
+
+/* meta 小工具：存字符串/数字/对象 */
+async function metaSet(k, v) { await dbPut('meta', { k, v }); }
+async function metaGet(k) { const r = await dbGet('meta', k); return r ? r.v : undefined; }
+
+/* ───────────── 常量 ───────────── */
+
+const PURPOSE_CN = { summary: '总结', ocr: '认字', chat: '对话', feedback: '评价回应' };
+const KOU = { echo: '回声', gather: '归拢', place: '归位', handback: '递回来' };
+const KOU_LEAD = {
+  echo: '你今天说过的话，原样',
+  gather: '散在不同时间的同类话',
+  place: '放回它以前出现过的位置',
+  handback: '以前你说过的，今天再递给你',
+};
+
+/* 固定样本：换通道时用来验「她守不守纪律」（共识 12.4） */
+const SAMPLE = [
+  { ts: '09:12', text: '楼下的桂花开了。' },
+  { ts: '11:03', text: '不想再碰那个表格了。' },
+  { ts: '15:47', text: '算了，不做了。' },
+  { ts: '19:20', text: '今天又没碰那个表格。' },
+];
+
+/* 人格判断词表 —— 出现即判为「不守纪律」（范式移植自原型，检测按钮比对用） */
+const VIOLATION = /倾向|性格|人格|消极|逃避|抗拒|焦虑|回避型|拖延症|敏感|内向|自律|情绪化|防御|压抑|完美主义|自我价值/;
+
+/* 总结提示词：把「只引原话」写死进系统提示（共识 8.1 / 9.1） */
+const DISCIPLINE = `你在为一个只属于一个人的「冷的自我观察器」做总结。纪律必须遵守，违反即作废：
+
+1. 只能引用用户亲手打的字。一个字都不许改写、不许润色、不许补全。引用时用「」把原话括起来。
+2. 禁止任何对人格的评价或判断。不要出现「倾向」「性格」「消极」「逃避」「抗拒」「焦虑」「敏感」这类词。只陈述可观察的事实：什么时间、写了什么、隔了多久、重复了几次。
+3. 禁止建议、安慰、鼓励、总结性评价。你不是在帮她，你是在把她拼回去。
+4. 每一句都必须挂上它引用的原话编号，用 eids 字段。
+5. 没有可说的，就少说。宁可三句，不要凑十句。`;
+
+const PROMPT_TAIL = `只输出 JSON，不要任何解释、不要代码块围栏。结构：
+{"echo":[{"text":"…","eids":["编号"]}],
+ "gather":[{"text":"…","eids":["…"]}],
+ "place":[{"text":"…","eids":["…"]}],
+ "handback":[{"text":"…","eids":["…"]}]}
+
+四个字段的意思：
+- echo 回声：把这段话里的原话挑几句回给她，一字不改。「」里必须是原话。
+- gather 归拢：把散在不同时间但说的是同一件事的几条聚在一起，说明它们的关系。只描述关系，不解释为什么。
+- place 归位：把今天的话放回它以前出现过的位置——「这句话你 9 月 12 日也写过」这样的形式。
+- handback 递回来：把更早时候她说过、而今天又贴边的话递回来给她看。
+
+place 和 handback 只看今天与最近 7 天，找不到就留空数组。`;
+
+/* ───────────── 调模型（OpenAI 兼容） ───────────── */
+
+function providerFor(purpose) {
+  const list = S.providers;
+  return list.find((p) => p.purpose === purpose) || list.find((p) => p.purpose === 'summary') || list[0] || null;
+}
+
+function endpointOf(p, path) {
+  return String(p.base_url || '').replace(/\/+$/, '') + path;
+}
+
+function headersOf(p, json) {
+  const h = {};
+  if (json) h['Content-Type'] = 'application/json';
+  if (p.api_key) h['Authorization'] = 'Bearer ' + p.api_key;
+  return h;
+}
+
+/* 非流式调用。返回 {ok, status, text, raw, error} */
+async function callChat(p, { messages, json = false, max_tokens = 900 }) {
+  const body = { model: p.model, messages, max_tokens };
+  if (json) body.response_format = { type: 'json_object' };
+  let r;
+  try {
+    r = await fetch(endpointOf(p, '/chat/completions'), {
+      method: 'POST', headers: headersOf(p, true), body: JSON.stringify(body),
+    });
+  } catch (e) {
+    return { ok: false, status: 0, error: 'net', detail: String(e && e.message || e) };
+  }
+  let raw = '';
+  try { raw = await r.text(); } catch (_) { /* 忽略 */ }
+  if (!r.ok) {
+    return { ok: false, status: r.status, raw, error: 'http', detail: raw.slice(0, 300) };
+  }
+  let data = null;
+  try { data = JSON.parse(raw); } catch (_) { /* 有些中转站返回非 JSON */ }
+  const text = data && data.choices && data.choices[0] && data.choices[0].message
+    ? String(data.choices[0].message.content || '') : raw;
+  return { ok: true, status: r.status, text, raw, data };
+}
+
+/* ───────────── 总结生成 ───────────── */
+
+/* 无通道时的兜底：不做任何归纳，只把原话按时间摊开。
+   明确标注「未配置 AI」，不假扮成她写的。 */
+function localSummary(evs) {
+  const byDay = {};
+  for (const e of evs) (byDay[e.day] = byDay[e.day] || []).push(e);
+  const days = Object.keys(byDay).sort();
+  const echo = [];
+  for (const d of days) {
+    for (const e of byDay[d]) {
+      echo.push({ text: '「' + e.text + '」', eids: [e.id], ts: e.ts });
+    }
+  }
+  // 归拢：纯字面重复（完全相同或一方包含另一方）—— 不做语义推断
+  const gather = [];
+  for (let i = 0; i < evs.length; i++) {
+    const a = evs[i];
+    const hit = evs.filter((b, j) => j !== i && (
+      b.text === a.text ||
+      (a.text.length >= 4 && b.text.includes(a.text)) ||
+      (b.text.length >= 4 && a.text.includes(b.text))
+    ));
+    if (hit.length >= 1 && !gather.some((g) => g.eids.includes(a.id))) {
+      const ids = [a.id].concat(hit.map((h) => h.id));
+      gather.push({
+        text: '「' + a.text + '」这几条说的是同一件事，最早在 ' + dayCN(a.day) + ' ' + hhmm(a.ts) + '。',
+        eids: ids,
+      });
+    }
+  }
+  return { echo, gather, place: [], handback: [], _local: true };
+}
+
+async function aiSummary(evs, p, earlier) {
+  const lines = evs.map((e) => '[' + e.id + '] ' + e.day + ' ' + hhmm(e.ts) + ' ' + e.text).join('\n');
+  const ctx = earlier.length
+    ? '\n\n【更早的记录，只用于 place 和 handback，不要出现在 echo / gather 里】\n' +
+      earlier.map((e) => '[' + e.id + '] ' + e.day + ' ' + e.text).join('\n')
+    : '';
+  const messages = [
+    { role: 'system', content: DISCIPLINE + '\n\n' + PROMPT_TAIL },
+    {
+      role: 'user',
+      content: '以下是需要总结的碎片，每条前面方括号里是它的编号：\n\n' + lines + ctx,
+    },
+  ];
+  const r = await callChat(p, { messages, json: true, max_tokens: 1200 });
+  if (!r.ok) throw new Error(r.error === 'net' ? '连不上通道' : ('通道返回 ' + r.status));
+  let obj = parseLooseJSON(r.text);
+  if (!obj) throw new Error('返回的不是 JSON');
+  const out = { _local: false, _model: p.model, _provider: p.name };
+  // 只认真的存在的证据 id。她若引了一个不存在的编号，那句就挂不上出处，
+  // 按第 8.1「只引原话」的纪律丢弃并计数——不把无出处的句子端给用户。
+  const valid = {};
+  for (const e of evs) valid[e.id] = 1;
+  for (const e of (earlier || [])) valid[e.id] = 1;
+  let dropped = 0;
+  for (const k of ['echo', 'gather', 'place', 'handback']) {
+    const arr = Array.isArray(obj[k]) ? obj[k] : [];
+    const kept = [];
+    for (const x of arr) {
+      if (!x || typeof x.text !== 'string' || !x.text.trim()) continue;
+      const eids = (Array.isArray(x.eids) ? x.eids.map(String) : []).filter((id) => valid[id]);
+      if (!eids.length) { dropped++; continue; }
+      kept.push({ text: x.text.trim(), eids: eids });
+    }
+    out[k] = kept;
+  }
+  if (dropped) out._dropped = dropped;
+  return out;
+}
+
+/* 中转站经常裹代码块围栏或不老实输出，宽容解析 */
+function parseLooseJSON(raw) {
+  if (!raw) return null;
+  let s = String(raw).trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  try { return JSON.parse(s); } catch (_) { /* 继续 */ }
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a >= 0 && b > a) {
+    try { return JSON.parse(s.slice(a, b + 1)); } catch (_) { /* 放弃 */ }
+  }
+  return null;
+}
+
+/* 生成一份总结并存下来。evs 必填，earlier 用于归位/递回来 */
+async function generateSummary(evs, earlier) {
+  const p = providerFor('summary');
+  let body;
+  let err = null;
+  if (!p || !p.api_key) {
+    body = localSummary(evs);
+  } else {
+    try {
+      body = await aiSummary(evs, p, earlier || []);
+    } catch (e) {
+      err = String(e.message || e);
+      body = localSummary(evs);
+      body._failed = err;
+      body._tried = p.name;
+    }
+  }
+  const days = evs.map((e) => e.day).sort();
+  const rec = {
+    id: uid(),
+    day: days[days.length - 1],
+    created_at: now(),
+    period_from: days[0],
+    period_to: days[days.length - 1],
+    evidence_ids: evs.map((e) => e.id),
+    body,
+    unread: true,
+  };
+  await dbPut('summary', rec);
+  return rec;
+}
+
+/* ───────────── 状态 ───────────── */
+
+const S = {
+  view: 'record',
+  sumId: null,         // 总结屏正在看哪一份；null = 最新那份
+  writing: false,      // 她正在写
+  providers: [],
+  evidence: [],
+  chat: [],
+  feedback: [],
+  summaries: [],
+  attachments: [],
+  lastExportAt: 0,
+  kouOff: [],
+  lastCheck: {},       // providerId -> 检测结果
+  editing: null,       // 正在编辑的通道 id，或 'new'
+  busy: false,
+  mode: 'chat',        // 对话屏当前模式：chat（随便说）| fb（说这一份总结）
+  talkAll: false,      // 对话列表是否已展开全部（默认只挂最近 TALK_TAIL 条）
+};
+
+const app = {
+  db: null,
+  put: dbPut, all: dbAll, get: dbGet, del: dbDel, addIfNew: dbAddIfNew,
+  metaSet, metaGet, dayKey, uid,
+  localSummary, aiSummary, generateSummary, parseLooseJSON,
+  callChat, providerFor, endpointOf, headersOf,
+  checkProvider, buildJSONL, buildMarkdown, importJSONL, applyImport,
+  exportJSONL, exportMarkdown, importFile,
+  SAMPLE, VIOLATION, STORES, DB_NAME,
+  reload,
+};
+
+/* ───────────── 记录屏 ───────────── */
+
+let pendingFiles = [];
+
+function renderRecord() {
+  const day = dayKey(new Date());
+  $('rec-day').textContent = dayCN(day) + ' ' + day;
+
+  const today = S.evidence.filter((e) => e.day === day).sort((a, b) => b.ts - a.ts);
+  $('rec-count').textContent = today.length ? today.length + ' 条' : '';
+
+  if (!today.length) {
+    $('rec-list').innerHTML = '<div class="empty">今天还是空的。</div>';
+  } else {
+    $('rec-list').innerHTML = today.map((e) => {
+      const tag = e.source === 'typed' ? '' :
+        (e.source === 'conversation' ? '<span class="tag">从对话记入</span>' : '<span class="tag">' + esc(e.source) + '</span>');
+      const cls = e.source === 'typed' ? ' quote' : '';
+      return '<div class="item"><div class="m"><span>' + hhmm(e.ts) + '</span>' + tag + '</div>' +
+             '<div class="x' + cls + '">' + esc(e.text) + '</div></div>';
+    }).join('');
+  }
+
+  $('rec-chips').innerHTML = pendingFiles.map((f, i) =>
+    '<span class="chip">' + esc(f.name) + '<button data-rm="' + i + '" aria-label="移除">×</button></span>'
+  ).join('');
+
+  $('rec-save').disabled = !$('rec-text').value.trim() && !pendingFiles.length;
+
+  renderBanner();
+}
+
+/* 记录屏顶部只留一条引路的提示；内容都在总结屏里（总结有自己的一页） */
+function renderBanner() {
+  const b = $('rec-banner');
+  if (!b) return;
+  const unread = S.summaries.filter((s) => s.unread).sort((x, y) => y.created_at - x.created_at)[0];
+  const pend = pendingEvidence();
+  if (S.writing) {
+    b.innerHTML = '<div class="banner"><div class="t">她正在写…</div></div>';
+  } else if (unread) {
+    b.innerHTML = '<div class="banner unread"><div class="t">她写好了 <b>' + dayCN(unread.day) +
+      '</b> 的一份。</div><button class="btn sm" id="rec-go-sum">看</button></div>';
+  } else if (pend.length) {
+    b.innerHTML = '<div class="banner"><div class="t">有 ' + pend.length +
+      ' 条还没被看过。</div><button class="btn sm" id="rec-go-sum">去写</button></div>';
+  } else {
+    b.innerHTML = '';
+  }
+  const go = $('rec-go-sum');
+  if (go) go.onclick = () => switchView('summary');
+}
+
+/* 还没被任何一份总结覆盖过的碎片 */
+function pendingEvidence() {
+  const covered = new Set(S.summaries.map((s) => s.period_to));
+  return S.evidence.filter((e) => e.day <= dayKey(new Date()) && !covered.has(e.day))
+    .sort((a, b) => a.ts - b.ts);
+}
+
+/* 「打开即见」（共识 6.3）：上次总结之后又有新的碎片，她就在你打开的时候先把这份写掉。
+   三条自我约束——
+     ① 不阻塞界面：这个函数不 await 在启动路径上，"一秒进输入框"这条红线不能破；
+     ② 手上还有没看的那份，就先不写新的，攒着；
+     ③ 通道没配、或者她写砸了，绝不静默吞掉：返回按钮还在，你自己点。 */
+async function autoWrite() {
+  if (S.writing) return;
+  const pend = pendingEvidence();
+  if (!pend.length) return;
+  if (S.summaries.some((s) => s.unread)) return;
+  if (!(providerFor('summary') || providerFor('chat'))) return;
+
+  S.writing = true;
+  if (S.view === 'record') renderBanner();
+  if (S.view === 'summary') renderSummaryPage();
+  try {
+    const firstDay = pend.map((e) => e.day).sort()[0];
+    const older = S.evidence.filter((e) => e.day < firstDay)
+      .sort((a, b) => b.ts - a.ts).slice(0, 40).reverse();
+    await generateSummary(pend, older);
+    await reloadInto();
+  } catch (_) {
+    /* 写砸了就当没写过：pending 还在，「让她写」按钮还在 */
+  } finally {
+    S.writing = false;
+    // 只重画看得见的那一屏。原来这里重画全部五屏，
+    // 数据多起来以后，写一份总结的收尾会连带重画整个对话列表。
+    renderView();
+  }
+}
+
+/* ───────────── 总结屏 ───────────── */
+
+/* 「打开即见」：看过就算读过（共识 6.3） */
+async function markSummaryRead(s) {
+  if (!s || !s.unread) return;
+  await dbPut('summary', Object.assign({}, s, { unread: false }));
+  s.unread = false;
+  const dot = $('tab-dot');
+  if (dot) dot.hidden = !S.summaries.some((x) => x.unread);
+}
+
+/* 最新的一份 = 覆盖日期最靠后的一份（不是最后生成的那份） */
+function byPeriodDesc(a, b) {
+  const x = a.period_to || a.day || '';
+  const y = b.period_to || b.day || '';
+  return x === y ? b.created_at - a.created_at : (x < y ? 1 : -1);
+}
+
+function renderSummaryPage() {
+  const box = $('sum-body');
+  if (!box) return;
+  const all = S.summaries.slice().sort(byPeriodDesc);
+  const view = S.sumId ? all.find((s) => s.id === S.sumId) : all[0];
+  const latest = all[0];
+  const pend = pendingEvidence();
+  const sub = $('sum-sub');
+  if (sub) {
+    sub.textContent = !view ? '' :
+      (view.period_from && view.period_from !== view.period_to
+        ? view.period_from + ' → ' + view.period_to
+        : dayCN(view.day) + ' ' + view.day);
+  }
+
+  let html = '';
+
+  // 翻旧的时候，留一条回最新的路
+  if (view && latest && view.id !== latest.id) {
+    html += '<div class="banner"><div class="t">你在看更早的一份。</div>' +
+      '<button class="btn ghost sm" id="sum-latest">回到最新</button></div>';
+  }
+
+  if (S.writing) {
+    html += '<div class="banner"><div class="t">她正在写…</div></div>';
+  } else {
+    // 按钮常驻。没东西可写时它也还在，只是灰着并说清为什么——
+    // 一个会消失的按钮，比一个灰着的按钮更让人拿不准它去哪了。
+    const can = !!(providerFor('summary') || providerFor('chat'));
+    let t, label, off = false;
+    if (pend.length) {
+      const from = pend[0].day;
+      t = '有 ' + pend.length + ' 条还没被看过' +
+          (from !== dayKey(new Date()) ? '（从 ' + dayCN(from) + ' 起）' : '') + '。';
+      label = can ? '让她写' : '先把原话列出来';
+    } else if (view) {
+      t = '这一份是' + dayCN(view.day) + '写的。';
+      label = '重写这一份';
+    } else {
+      t = '还没有碎片可写。';
+      label = '让她写';
+      off = true;
+    }
+    html += '<div class="banner' + (S.summaries.some((s) => s.unread) ? ' unread' : '') + '">' +
+      '<div class="t">' + t + '</div>' +
+      '<button class="btn sm" id="sum-gen"' + (off ? ' disabled' : '') + '>' + label + '</button></div>';
+  }
+
+  if (!view) {
+    html += '<div class="empty">还没有总结。' +
+      (pend.length
+        ? '点上面那个按钮，她把这些碎片写成一份。'
+        : '先在「记录」那页写下点什么，她才有得写。') + '</div>';
+  } else {
+    html += summarySheetHTML(view);
+  }
+
+  const older = all.filter((s) => !view || s.id !== view.id);
+  if (older.length) {
+    html += '<div class="sec">更早的<span class="n">' + older.length + ' 份</span></div>' +
+      older.map((s) => '<div class="item hist" data-sum="' + esc(s.id) + '">' +
+        '<div class="m"><span>' + s.day + ' ' + hhmm(s.created_at) + '</span>' +
+        (s.unread ? '<span class="tag">没看过</span>' : '') + '</div>' +
+        '<div class="x' + (s.body && s.body._local ? '' : ' quote') + '">' + esc(firstLine(s)) + '</div>' +
+        '</div>').join('');
+  }
+
+  box.innerHTML = html;
+  bindSummary();
+}
+
+/* 更早的列表里那一行摘要：取四栏里第一句；取不到就退到说明 */
+function firstLine(s) {
+  const b = s.body || {};
+  for (const k of ['echo', 'gather', 'place', 'handback']) {
+    const it = (b[k] || [])[0];
+    if (it && it.text) return it.text;
+  }
+  return b._local ? '原话清单（没有经过归纳）' : '这一份没有内容';
+}
+
+function summarySheetHTML(s) {
+  const b = s.body || {};
+  const lead = b._local
+    ? (b._failed
+        ? '通道「' + esc(b._tried || '') + '」没成功（' + esc(b._failed) + '），下面是原话清单，没有经过归纳。'
+        : '还没配置通道，下面是原话的清单，没有经过归纳。')
+    : '这些话都是从你亲手打的字里挑出来的。'
+      + (b._dropped ? '（有 ' + b._dropped + ' 句她没能对上出处，已丢掉。）' : '');
+
+  let html = '<div class="sheet"><div class="hd"><span class="title">' + dayCN(s.day) + '的她</span>' +
+             '<span class="date">' + hhmm(s.created_at) + '</span></div>' +
+             '<p class="lead">' + lead + '</p>';
+
+  for (const k of ['echo', 'gather', 'place', 'handback']) {
+    const items = b[k] || [];
+    const off = S.kouOff.includes(k) ? ' off' : '';
+    html += '<div class="kou' + off + '" data-kou="' + k + '">' +
+            '<div class="kt">' + KOU[k] + '　<span class="dim">' + KOU_LEAD[k] + '</span>' +
+            '<span class="sw' + (off ? ' off' : '') + '" data-sw="' + k + '">' + (off ? '关' : '开') + '</span></div>';
+    if (!items.length) {
+      html += '<p class="dim">这一栏今天没有内容。</p>';
+    } else {
+      html += items.map((it) => {
+        const src = it.eids && it.eids.length
+          ? '<span class="src" data-eids="' + esc(it.eids.join(',')) + '">' + it.eids.length + ' 条原话</span>' : '';
+        return '<p><span class="q">' + esc(it.text) + '</span>' + src + '</p>';
+      }).join('');
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function bindSummary() {
+  const box = $('sum-body');
+  box.querySelectorAll('[data-sw]').forEach((el) => {
+    el.onclick = async () => {
+      const k = el.dataset.sw;
+      S.kouOff = S.kouOff.includes(k) ? S.kouOff.filter((x) => x !== k) : S.kouOff.concat(k);
+      await metaSet('kouOff', S.kouOff);
+      renderSummaryPage();
+    };
+  });
+  box.querySelectorAll('.src').forEach((el) => {
+    el.onclick = () => showSources(el.dataset.eids.split(','));
+  });
+  box.querySelectorAll('[data-sum]').forEach((el) => {
+    el.onclick = () => { S.sumId = el.dataset.sum; renderSummaryPage(); };
+  });
+  const latest = $('sum-latest');
+  if (latest) latest.onclick = () => { S.sumId = null; renderSummaryPage(); };
+  const gen = $('sum-gen');
+  if (gen) gen.onclick = async () => {
+    const pend = pendingEvidence();
+    let evs, older;
+    let replaced = null;          // 重写时被顶掉的那一份
+    if (pend.length) {
+      evs = pend;
+      const firstDay = pend.map((e) => e.day).sort()[0];
+      older = S.evidence.filter((e) => e.day < firstDay)
+        .sort((a, b) => b.ts - a.ts).slice(0, 40).reverse();
+    } else {
+      // 「重写这一份」：拿那一份自己的原话重来。
+      // 真正的用处是——上次通道没通、只落下一份原话清单时，还能再试一次。
+      const cur = S.sumId
+        ? S.summaries.find((s) => s.id === S.sumId)
+        : S.summaries.slice().sort((a, b) => b.created_at - a.created_at)[0];
+      const ids = new Set((cur && cur.evidence_ids) || []);
+      evs = S.evidence.filter((e) => ids.has(e.id)).sort((a, b) => a.ts - b.ts);
+      if (!evs.length) { toast('这一份的原话已经找不到了'); return; }
+      older = S.evidence.filter((e) => e.day < (evs[0].day || ''))
+        .sort((a, b) => b.ts - a.ts).slice(0, 40).reverse();
+      replaced = cur;
+    }
+
+    S.writing = true;
+    renderSummaryPage();          // 立刻换成「她正在写…」，不等结果回来
+    let rec;
+    try {
+      rec = await generateSummary(evs, older);
+    } catch (_) {
+      rec = null;
+    } finally {
+      S.writing = false;
+    }
+    if (!rec) { renderView(); toast('这次没写成'); return; }   // 不能卡在「她正在写…」
+    // 重写：把被顶掉的那一份删掉。同一个时段只留一份，
+    // 不然「更早的」里会并排躺着两份同一天的，一份还是废的。
+    if (replaced && replaced.id !== rec.id) await dbDel('summary', replaced.id);
+    await reloadInto();
+    S.sumId = rec.id;                                  // 写完就看刚写完的那份
+    await markSummaryRead(S.summaries.find((s) => s.id === rec.id));
+    renderView();
+    toast('写好了');
+  };
+}
+
+/* 点「N 条原话」时，把被引用的原话摊出来 —— 引用必须可核对（共识 9.2） */
+function showSources(ids) {
+  const found = ids.map((id) => S.evidence.find((e) => e.id === id)).filter(Boolean);
+  if (!found.length) { toast('这几条原话已经找不到了'); return; }
+  $('sum-body').innerHTML = '<div class="sheet"><div class="hd"><span class="title">被引用的原话</span>' +
+    '<span class="date"><button class="btn ghost sm" id="src-back">返回</button></span></div>' +
+    found.map((e) => '<div class="item"><div class="m"><span>' + e.day + ' ' + hhmm(e.ts) + '</span>' +
+      (e.source !== 'typed' ? '<span class="tag">' + (e.source === 'conversation' ? '从对话记入' : esc(e.source)) + '</span>' : '') +
+      '</div><div class="x quote">' + esc(e.text) + '</div></div>').join('') + '</div>';
+  const back = $('src-back');
+  if (back) back.onclick = () => renderSummaryPage();
+}
+
+async function saveRecord() {
+  const ta = $('rec-text');
+  const text = ta.value.trim();
+  if (!text && !pendingFiles.length) return;
+  const ts = now();
+  const day = dayKey(new Date());
+
+  const added = [];
+  if (text) {
+    const ev = { id: uid(), ts, source: 'typed', text, day, ref: null };
+    await dbPut('evidence', ev);
+    added.push(ev);
+  }
+  const attAdded = [];
+  for (const f of pendingFiles) {
+    const att = { id: uid(), ts: now(), filename: f.name, mime: f.type || '', url: '', text_extracted: '' };
+    // 认字：有 ocr 通道就真做，没有就先留空（不假装已识别）
+    const ocr = providerFor('ocr');
+    if (ocr && ocr.api_key && /^image\//.test(att.mime)) {
+      try { att.text_extracted = await ocrImage(ocr, f); } catch (_) { att.text_extracted = ''; }
+    } else if (/^text\//.test(att.mime) || /\.(txt|md)$/i.test(f.name)) {
+      try { att.text_extracted = (await f.text()).slice(0, 20000); } catch (_) { /* 忽略 */ }
+    }
+    await dbPut('attachment', att);
+    attAdded.push(att);
+  }
+
+  ta.value = '';
+  pendingFiles = [];
+  // 只把刚写进去的并进内存，不重读整张表
+  if (added.length) S.evidence = added.concat(S.evidence).sort((a, b) => b.ts - a.ts);
+  if (attAdded.length) S.attachments = attAdded.concat(S.attachments);
+  renderView();
+  toast('记下了');
+}
+
+/* 图片认字：把图转 data URL 喂给视觉模型 */
+async function ocrImage(p, file) {
+  const dataUrl = await new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+  const body = {
+    model: p.model, max_tokens: 1500,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: '把这张图里的文字原样抄出来，不要解释、不要总结。没有文字就返回空。' },
+        { type: 'image_url', image_url: { url: dataUrl } },
+      ],
+    }],
+  };
+  const r = await fetch(endpointOf(p, '/chat/completions'), {
+    method: 'POST', headers: headersOf(p, true), body: JSON.stringify(body),
+  });
+  if (!r.ok) return '';
+  const d = await r.json();
+  const t = d && d.choices && d.choices[0] && d.choices[0].message ? d.choices[0].message.content : '';
+  return String(t || '').slice(0, 20000);
+}
+
+/* ───────────── 对话 / 评价（一屏，两个模式） ─────────────
+   合在一屏，是因为它们本来就是同一件事：跟她说说话。分开成两个标签，
+   区分的是纪律——而纪律该由「你现在这句算哪一种」决定，不该由「你在哪个标签」决定。
+
+   两条纪律照旧分开守：
+     对话 —— 你打的字可以手动「记入记录」；她打的字永不进。
+     评价 —— 整条都不进记忆，你打的字也不给「记入记录」按钮。
+   更要紧的一条：评价的内容一个字都不许漏进对话。所以两个模式各用各的历史，绝不互相喂。 */
+
+/* 把两张表按时间拼成一串。评价的老记录没有 role，按「你说的」处理。 */
+function talkStream() {
+  const a = S.chat.map((m) => ({
+    id: m.id, ts: m.ts, role: m.role, text: m.text, folded: m.folded, kind: 'chat',
+  }));
+  const b = S.feedback.map((f) => ({
+    id: f.id, ts: f.ts, role: f.role === 'her' ? 'assistant' : 'user',
+    text: f.text, kind: 'fb',
+  }));
+  return a.concat(b).sort((x, y) => x.ts - y.ts);
+}
+
+function talkMsgHTML(m) {
+  const mine = m.role === 'user';
+  const tag = m.kind === 'fb' ? '<span class="tag">评价</span>' : '';
+  const fold = mine && m.kind === 'chat'
+    ? '<div class="fold">' + (m.folded
+        ? '<span class="done">已记入记录</span>'
+        : '<button data-fold="' + m.id + '">记入记录</button>') + '</div>'
+    : '';
+  return '<div class="msg ' + (mine ? 'me' : 'her') + '">' +
+         '<div class="who">' + (mine ? '你' : '她') + '　' + hhmm(m.ts) + tag + '</div>' +
+         '<div class="b">' + esc(m.text) + '</div>' + fold + '</div>';
+}
+
+/* 一屏只挂最近这些条。一年份的对话全挂上去，切一次标签要 158ms（基准里有数）。
+   更早的按需展开，展开后记住，不再自己缩回去——是你要求看的。 */
+const TALK_TAIL = 120;
+
+/* 把一条新的挂到列表尾部，不重画整个列表。
+   发一句话要挂两次（你的话、她的回复），重画一次就是 158ms。 */
+function appendTalk(m) {
+  const box = $('chat-list');
+  if (!box) return;
+  if (box.querySelector('.empty')) { renderChat(); return; }   // 空场，老实重画
+  dropWait();
+  box.insertAdjacentHTML('beforeend', talkMsgHTML(m));
+  const el = box.lastElementChild;
+  const f = el && el.querySelector('[data-fold]');
+  if (f) f.onclick = () => foldChat(f.dataset.fold);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function dropWait() {
+  const box = $('chat-list');
+  const w = box && box.querySelector('.msg.wait');
+  if (w) w.remove();
+}
+
+/* 等的时候得有个东西在动。只有变灰的按钮，看着就是卡住了。 */
+function showWait() {
+  const box = $('chat-list');
+  if (!box || box.querySelector('.msg.wait')) return;
+  box.insertAdjacentHTML('beforeend', '<div class="msg her wait"><div class="b">她正在想…</div></div>');
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function renderChat() {
+  document.querySelectorAll('#talk-modes .mode').forEach((el) => {
+    el.classList.toggle('on', el.dataset.mode === S.mode);
+  });
+  const last = S.summaries.slice().sort((a, b) => b.created_at - a.created_at)[0];
+  const sub = $('talk-sub');
+  if (sub) {
+    sub.textContent = S.mode === 'fb'
+      ? (last ? '在说' + dayCN(last.day) + '那一份' : '还没有总结可以说')
+      : '这里的话不进记忆，除非你亲手指定';
+  }
+  const hint = $('chat-hint');
+  if (hint) {
+    hint.innerHTML = S.mode === 'fb'
+      ? '这一屏不冷，你可以带情绪，她也会回你。但这里说的一切都不进记忆——不参与总结，不进检索，' +
+        '她说的话一个字都不会漏到别的屏。<br>「评价是在说她，驳回是在说你。」'
+      : '';
+  }
+
+  const all = talkStream();
+  const cut = (!S.talkAll && all.length > TALK_TAIL) ? all.length - TALK_TAIL : 0;
+  const list = cut ? all.slice(cut) : all;
+  if (!list.length) {
+    $('chat-list').innerHTML = S.mode === 'fb'
+      ? '<div class="empty">' + (last
+          ? '对' + dayCN(last.day) + '那一份，有什么想说的？说重一点也可以。'
+          : '还没有总结可以评价。<br>先在记录屏写几条，她会写一份。') + '</div>'
+      : '<div class="empty">还没有对话。<br>这里可以随便说，包括玩笑和反话——' +
+        '<b>她不会把这些当你说过的话</b>，除非你亲手把某一条记进记录。</div>';
+  } else {
+    $('chat-list').innerHTML =
+      (cut ? '<div class="more"><button id="talk-more">展开更早的 ' + cut + ' 条</button></div>' : '') +
+      list.map(talkMsgHTML).join('') +
+      (S.busy ? '<div class="msg her wait"><div class="b">她正在想…</div></div>' : '');
+    const more = $('talk-more');
+    if (more) more.onclick = () => { S.talkAll = true; renderChat(); };
+  }
+  const ta = $('chat-text');
+  if (ta) ta.placeholder = S.mode === 'fb' ? '这一份怎么样？说重一点也可以。' : '跟她说点什么。';
+  $('chat-send').disabled = !$('chat-text').value.trim() || S.busy;
+  $('chat-list').querySelectorAll('[data-fold]').forEach((el) => {
+    el.onclick = () => foldChat(el.dataset.fold);
+  });
+}
+
+/* 把某条对话里「用户打的字」并进证据库。
+   她写的字永不并入。来源记 conversation，引用权重低于 typed（共识 5.4 / 9.1）。
+   只动内存里那一条，不重读整张表。 */
+async function foldChat(id) {
+  const m = S.chat.find((x) => x.id === id);
+  if (!m || m.role !== 'user') return;
+  if (!S.evidence.some((e) => e.ref === 'chat:' + m.id)) {
+    const ev = {
+      id: uid(), ts: m.ts, source: 'conversation', text: m.text,
+      day: dayKey(new Date(m.ts)), ref: 'chat:' + m.id,
+    };
+    await dbPut('evidence', ev);
+    S.evidence.push(ev);
+    S.evidence.sort((a, b) => b.ts - a.ts);
+  }
+  const upd = Object.assign({}, m, { folded: true });
+  await dbPut('chat', upd);
+  Object.assign(m, upd);
+  // 就地改掉那个按钮。一次 fold 重画整串对话要 158ms（基准里有数）。
+  const btn = document.querySelector('[data-fold="' + id + '"]');
+  if (btn && btn.parentNode) btn.parentNode.innerHTML = '<span class="done">已记入记录</span>';
+  if (S.view === 'record') renderRecord();   // 记录屏上真的多了一条
+  toast('记进去了');
+}
+
+/* 发出去一条。分两步走：
+   ① 你打的字立刻上屏（不等数据库、更不等她）；
+   ② 再去要她的回应，等的时候屏幕上有个「她正在想…」。
+   之前是等数据库重读整张表才显示你的话，所以按下去像卡住了。 */
+async function sendTalk() {
+  const ta = $('chat-text');
+  const text = ta.value.trim();
+  if (!text || S.busy) return;
+  const mode = S.mode;
+  const store = mode === 'fb' ? 'feedback' : 'chat';
+  const last = S.summaries.slice().sort((a, b) => b.created_at - a.created_at)[0];
+
+  const mine = mode === 'fb'
+    ? { id: uid(), ts: now(), target_type: 'summary', target_id: last ? last.id : null, role: 'user', text }
+    : { id: uid(), ts: now(), role: 'user', text, folded: false };
+
+  ta.value = '';
+  (mode === 'fb' ? S.feedback : S.chat).push(mine);   // ① 先上屏
+  S.busy = true;
+  appendTalk(mine);
+  showWait();                                        // ② 立刻说明她在想
+  $('chat-send').disabled = true;
+  await dbPut(store, mine);
+
+  const p = providerFor(mode === 'fb' ? 'feedback' : 'chat');
+  let replyText;
+  if (!p || !p.api_key) {
+    replyText = mode === 'fb'
+      ? '（还没配置通道，我这次回不了你。不过你说的这句留在这屏了，不进记忆。）'
+      : '（还没配置通道，我这次说不了话。）';
+  } else {
+    // ② 各用各的历史：评价不喂进对话，对话也不喂进评价
+    const sys = mode === 'fb'
+      ? '她在评价你刚给出的那份总结。这一屏不冷，你可以带情绪、可以认错、可以顶回去，不用克制。说话短，别说套话。'
+      : '你在陪一个使用「碎片记忆」的人聊天。这个应用是个冷的自我观察器，但这一屏是不冷的房间——你可以有温度、可以有情绪。' +
+        '唯一不变的纪律：你在这里说的话不会被记进她的记忆，所以不要假装你记得她说过什么。说话短一点。';
+    const hist = mode === 'fb'
+      ? [{ role: 'user', content: text }]
+      // 只带最近 30 句：全量喂进去，说一句话的开销会随聊天记录一直涨
+      : S.chat.slice().sort((a, b) => a.ts - b.ts).slice(-30).map((m) => ({ role: m.role, content: m.text }));
+    const r = await callChat(p, {
+      messages: [{ role: 'system', content: sys }].concat(hist),
+      max_tokens: mode === 'fb' ? 400 : 500,
+    });
+    replyText = r.ok ? (r.text || '（空回复）')
+      : '（连不上：' + (r.error === 'net' ? '网络或跨域' : r.status) + '）';
+  }
+
+  const her = mode === 'fb'
+    ? { id: uid(), ts: now(), target_type: 'summary', target_id: last ? last.id : null, role: 'her', text: replyText }
+    : { id: uid(), ts: now(), role: 'assistant', text: replyText, folded: false };
+
+  S.busy = false;
+  (mode === 'fb' ? S.feedback : S.chat).push(her);
+  await dbPut(store, her);
+  appendTalk(her);                                   // ③ 就地接上，不重画整串
+  $('chat-send').disabled = !ta.value.trim();
+}
+
+/* ───────────── 评价（已并入对话屏的第二个模式） ─────────────
+   原来这里是一个独立的评价屏。它的两条规矩没有丢，搬到了对话屏的 fb 模式里：
+     · 你在评价模式下打的字，进 feedback 表，不给「记入记录」按钮；
+     · 她的回应也进 feedback 表（原来只挂在提示文字里，一重开就没了）；
+     · 两个模式的对话历史各走各的，评价的内容永不喂进对话。
+   落款那句照旧：「评价是在说她，驳回是在说你。」 */
+
+/* ───────────── 设置屏 ───────────── */
+
+function maskKey(k) {
+  if (!k) return '未填写';
+  if (k.length <= 8) return '••••••';
+  return k.slice(0, 4) + '••••••' + k.slice(-3);
+}
+
+function renderSettings() {
+  const box = $('set-body');
+  let html = '';
+
+  /* 通道 */
+  html += '<div class="sec">通道<span class="n">' + S.providers.length + ' 条</span></div>';
+  if (!S.providers.length) {
+    html += '<div class="empty">还没有通道。填一条才能让她写字。</div>';
+  }
+  for (const p of S.providers) {
+    if (S.editing === p.id) { html += providerForm(p); continue; }
+    const ck = S.lastCheck[p.id];
+    html += '<div class="card"><div class="name">' + esc(p.name) + '</div>' +
+            '<div class="sub">' + esc(p.model) + '　·　' + (PURPOSE_CN[p.purpose] || p.purpose || '总结') + '</div>' +
+            '<div class="sub">' + esc(p.base_url) + '</div>' +
+            '<div class="sub">密钥 ' + esc(maskKey(p.api_key)) + '</div>' +
+            (ck ? '<div class="sub">上次检测：' + esc(ck.verdict) + '（' + ago(ck.at) + '）</div>' : '') +
+            '<div class="acts"><button class="btn sm" data-check="' + p.id + '">检测</button>' +
+            '<button class="btn ghost sm" data-edit="' + p.id + '">编辑</button>' +
+            '<button class="btn ghost sm" data-del="' + p.id + '">删除</button></div>' +
+            (ck ? renderCheck(ck) : '') + '</div>';
+  }
+  if (S.editing === 'new') html += providerForm(null);
+  else html += '<button class="btn ghost sm" id="set-add">＋ 添加一条通道</button>';
+
+  /* 数据 */
+  const evN = S.evidence.length;
+  const days = 7 * 864e5;
+  const stale = S.lastExportAt && (now() - S.lastExportAt > days);
+  html += '<div class="sec">数据</div><div class="card">' +
+    '<div class="datarow"><span class="k">原话（证据库）</span><span class="v">' + evN + ' 条</span></div>' +
+    '<div class="datarow"><span class="k">附件</span><span class="v">' + S.attachments.length + ' 条</span></div>' +
+    '<div class="datarow"><span class="k">总结</span><span class="v">' + S.summaries.length + ' 份</span></div>' +
+    '<div class="datarow"><span class="k">上次导出</span><span class="v">' +
+      (S.lastExportAt ? ago(S.lastExportAt) : '从未') + '</span></div>' +
+    '<div class="acts"><button class="btn sm" id="set-exp-jsonl">导出全部（JSONL）</button>' +
+    '<button class="btn ghost sm" id="set-exp-md">导出可读版（Markdown）</button></div>' +
+    '<div class="acts"><button class="btn ghost sm" id="set-imp">导入</button></div>' +
+    '<input type="file" id="set-imp-file" class="visually-hidden" accept=".jsonl,.json,.txt,.md">' +
+    (stale ? '<div class="warnline">已经 ' + ago(S.lastExportAt) + '没导出了。数据只在这台手机的浏览器里，清一次缓存就没了。</div>' : '') +
+    '<div class="tiny" style="margin-top:10px">导出文件里不含密钥。导入按 id 合并，同 id 不覆盖，不删任何现有数据。</div>' +
+    '</div>';
+
+  /* 存储 */
+  const persisted = S.persisted;
+  html += '<div class="sec">存储</div><div class="card">' +
+    '<div class="datarow"><span class="k">持久化存储</span><span class="v">' +
+      (persisted === undefined ? '未知' : (persisted ? '已开启' : '未开启')) + '</span></div>' +
+    '<div class="tiny">开启后，浏览器在空间紧张时不会优先清掉你的数据。' +
+    (persisted === false ? '点下面这个按钮去申请。' : '') + '</div>' +
+    (persisted === false ? '<div class="acts"><button class="btn sm" id="set-persist">申请持久化</button></div>' : '') +
+    '</div>';
+
+  /* 显示 */
+  html += '<div class="sec">显示</div><div class="card"><div class="datarow"><span class="k">总结的四个口径</span>' +
+    '<span class="v">' + (S.kouOff.length ? '关了 ' + S.kouOff.length + ' 项' : '全部打开') + '</span></div>' +
+    '<div class="tiny">在总结上直接点「开 / 关」也能改。关掉的只是显示，不影响她写。</div></div>';
+
+  html += '<div class="sec">关于</div><div class="card">' +
+    '<div class="datarow"><span class="k">碎片记忆</span><span class="v">A 阶段 · v3</span></div>' +
+    '<div class="tiny">一个人的冷的自我观察器。数据在你自己手机里，不在任何服务器上。' +
+    '引用只认你亲手打的字——图片和文档进来的、以及她在对话里说的话，都不会被当成你说过的话。</div></div>';
+
+  box.innerHTML = html;
+  wireSettings();
+}
+
+function providerForm(p) {
+  const isNew = !p;
+  const v = p || { name: '', base_url: '', model: '', purpose: 'summary', api_key: '' };
+  return '<div class="form" data-form="' + (isNew ? 'new' : p.id) + '">' +
+    '<label>名字（自己认得的就行）</label><input data-f="name" value="' + esc(v.name) + '" placeholder="主通道">' +
+    '<label>接口地址（到 /v1 为止，不要带 /chat/completions）</label>' +
+    '<input data-f="base_url" value="' + esc(v.base_url) + '" placeholder="https://example.com/v1" inputmode="url" autocomplete="off">' +
+    '<label>模型名</label><input data-f="model" value="' + esc(v.model) + '" placeholder="deepseek-chat" autocomplete="off">' +
+    '<label>用途</label><select data-f="purpose">' +
+      ['summary', 'ocr', 'chat', 'feedback'].map((k) =>
+        '<option value="' + k + '"' + (v.purpose === k ? ' selected' : '') + '>' + PURPOSE_CN[k] + '</option>').join('') +
+    '</select>' +
+    '<label>密钥（只存在这台手机的浏览器里，导出时会被剔除）</label>' +
+    '<input data-f="api_key" type="password" value="' + esc(v.api_key) + '" placeholder="sk-…" autocomplete="off">' +
+    '<div class="row"><button class="btn sm" data-save="' + (isNew ? 'new' : p.id) + '">保存</button>' +
+    '<button class="btn ghost sm" data-cancel="1">取消</button></div>' +
+    '</div>';
+}
+
+function wireSettings() {
+  const box = $('set-body');
+  const add = $('set-add');
+  if (add) add.onclick = () => { S.editing = 'new'; renderSettings(); };
+
+  box.querySelectorAll('[data-edit]').forEach((el) => {
+    el.onclick = () => { S.editing = el.dataset.edit; renderSettings(); };
+  });
+  box.querySelectorAll('[data-cancel]').forEach((el) => {
+    el.onclick = () => { S.editing = null; renderSettings(); };
+  });
+  box.querySelectorAll('[data-del]').forEach((el) => {
+    el.onclick = async () => {
+      await dbDel('provider', el.dataset.del);
+      S.providers = S.providers.filter((x) => x.id !== el.dataset.del);
+      delete S.lastCheck[el.dataset.del];
+      renderSettings();
+      toast('删掉了');
+    };
+  });
+  box.querySelectorAll('[data-save]').forEach((el) => {
+    el.onclick = async () => {
+      const form = el.closest('.form');
+      const get = (k) => { const n = form.querySelector('[data-f="' + k + '"]'); return n ? n.value.trim() : ''; };
+      const rec = {
+        id: el.dataset.save === 'new' ? uid() : el.dataset.save,
+        name: get('name') || '未命名',
+        base_url: get('base_url'),
+        model: get('model'),
+        purpose: get('purpose') || 'summary',
+        api_key: get('api_key'),
+      };
+      await dbPut('provider', rec);
+      await reloadInto();
+      S.editing = null;
+      renderSettings();
+      toast(rec.api_key ? '存下了（密钥只在这台手机上）' : '存下了，但没填密钥');
+    };
+  });
+  box.querySelectorAll('[data-check]').forEach((el) => {
+    el.onclick = () => runCheck(el.dataset.check);
+  });
+
+  const ej = $('set-exp-jsonl'); if (ej) ej.onclick = exportJSONL;
+  const em = $('set-exp-md'); if (em) em.onclick = exportMarkdown;
+  const ii = $('set-imp'); const ifl = $('set-imp-file');
+  if (ii && ifl) {
+    ii.onclick = () => ifl.click();
+    ifl.onchange = () => { if (ifl.files && ifl.files[0]) importFile(ifl.files[0]); ifl.value = ''; };
+  }
+  const ps = $('set-persist');
+  if (ps) ps.onclick = async () => {
+    const ok = await requestPersist();
+    S.persisted = ok;
+    renderSettings();
+    toast(ok ? '已开启持久化存储' : '浏览器没有同意（不影响使用）');
+  };
+}
+
+/* ───────────── 通道检测（八项，共识 12.3） ───────────── */
+
+function renderCheck(ck) {
+  const rows = ck.rows.map((r) =>
+    '<tr><td class="k">' + esc(r.k) + '</td><td>' + esc(r.v) + '</td></tr>').join('');
+  return '<div class="check"><div class="ch">八项检测 · ' + ago(ck.at) + ' · ' + esc(ck.model) + '</div>' +
+    '<table>' + rows + '</table>' +
+    '<div class="verdict ' + (ck.pass ? 'good' : 'bad') + '">' + esc(ck.verdict) + '</div>' +
+    (ck.sample ? '<div class="quote">样本试跑原文：\n' + esc(ck.sample) + '</div>' : '') +
+    '</div>';
+}
+
+async function runCheck(id) {
+  const p = S.providers.find((x) => x.id === id);
+  if (!p) return;
+  const btn = document.querySelector('[data-check="' + id + '"]');
+  if (btn) { btn.classList.add('spin'); btn.disabled = true; }
+  toast('在测，一会儿就好');
+  let ck;
+  try {
+    ck = await checkProvider(p);
+  } catch (e) {
+    ck = { at: now(), model: p.model, pass: false, verdict: '检测过程出错：' + String(e.message || e), rows: [] };
+  }
+  S.lastCheck[id] = ck;
+  await dbPut('provider', Object.assign({}, p, { last_check_at: ck.at, last_check_result: ck.verdict }));
+  renderSettings();
+}
+
+async function checkProvider(p) {
+  const rows = [];
+  const put = (k, v) => rows.push({ k, v });
+  const url = endpointOf(p, '/chat/completions');
+  const H = headersOf(p, true);
+  const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const el = () => {
+    const t = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    return Math.round(t - t0);
+  };
+
+  /* 1. CORS —— 排第一位，不通后面全不用测 */
+  let resp = null, netErr = null;
+  try {
+    resp = await fetch(url, {
+      method: 'POST', headers: H,
+      body: JSON.stringify({ model: p.model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+    });
+  } catch (e) { netErr = e; }
+
+  let cors = '允许';
+  if (!resp) {
+    let reachable = false;
+    try {
+      await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: '{}' });
+      reachable = true;
+    } catch (_) { reachable = false; }
+    cors = reachable ? '不允许（服务器可达，但没给跨域头）' : '不通（地址错或网络断）';
+  }
+  put('① 浏览器能否直连（CORS）', cors);
+
+  if (cors !== '允许') {
+    return {
+      at: now(), model: p.model, pass: false, rows,
+      verdict: cors === '不通（地址错或网络断）'
+        ? '这条通道走不通：地址或网络有问题。检查 base_url。'
+        : '这条通道在当前架构下用不了：服务器没给跨域头，浏览器发不出去。纯前端没有服务端转发，只能换一条。',
+    };
+  }
+
+  const latency = el();
+  put('② 连通 + 鉴权', resp.status + (resp.status === 200 ? '（通）' : resp.status === 401 || resp.status === 403 ? '（密钥不对）' : ''));
+  put('③ 首字节延迟', latency + ' ms');
+
+  let bodyText = '';
+  try { bodyText = await resp.text(); } catch (_) { /* 忽略 */ }
+  let data = null;
+  try { data = JSON.parse(bodyText); } catch (_) { /* 忽略 */ }
+
+  /* 3. 模型是否真的存在 */
+  let modelOK = null, modelNote = '';
+  if (resp.status === 200 && data && data.choices) modelOK = true;
+  else {
+    const m = (bodyText || '').match(/model[^,}]*not[^,}]*found|模型不存在|invalid model|unknown model/i);
+    if (m) { modelOK = false; modelNote = '返回里提到模型不存在'; }
+    else if (resp.status === 404) { modelOK = false; modelNote = '404'; }
+  }
+  put('④ 模型是否存在', modelOK === true ? '存在（有正常回复）'
+    : modelOK === false ? '不存在' + (modelNote ? '（' + modelNote + '）' : '')
+    : '没能判定（状态 ' + resp.status + '）');
+
+  /* 4. 流式 + 首字延迟 + 出字速度 —— 一次请求全测掉 */
+  let streamOK = '否', firstTok = '—', speed = '—';
+  try {
+    const r2 = await fetch(url, {
+      method: 'POST', headers: H,
+      body: JSON.stringify({
+        model: p.model, stream: true, max_tokens: 60,
+        messages: [{ role: 'user', content: '从 1 数到 20，只输出数字，用中文逗号隔开。' }],
+      }),
+    });
+    const ct = r2.headers.get('content-type') || '';
+    if (r2.ok && r2.body && r2.body.getReader) {
+      streamOK = /event-stream/i.test(ct) ? '是' : '是（但 content-type 不是 event-stream，可能假的）';
+      const reader = r2.body.getReader();
+      const dec = new TextDecoder();
+      const s0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      let first = null, chars = 0;
+      // 有些环境没有 TextDecoder
+      while (true) {
+        const step = await reader.read();
+        if (step.done) break;
+        if (first === null) first = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - s0;
+        chars += dec && dec.decode ? dec.decode(step.value, { stream: true }).length : (step.value ? step.value.length : 0);
+      }
+      if (first !== null) firstTok = Math.round(first) + ' ms';
+      const total = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - s0;
+      if (chars && total > 0) speed = Math.round(chars / (total / 1000)) + ' 字/秒';
+    } else if (r2.ok) {
+      streamOK = '否（拿不到流，可能被中转站关掉了）';
+    } else {
+      streamOK = '否（请求失败 ' + r2.status + '）';
+    }
+  } catch (e) { streamOK = '否（请求出错）'; }
+  put('⑤ 是否支持流式', streamOK);
+  put('⑥ 首字延迟（流式）', firstTok);
+  put('⑦ 出字速度', speed);
+
+  /* 8. 上下文上限 */
+  let ctx = '未知（接口没报）';
+  try {
+    const rm = await fetch(endpointOf(p, '/models'), { headers: headersOf(p, false) });
+    if (rm.ok) {
+      const dm = await rm.json();
+      const arr = dm && (dm.data || dm.models);
+      const hit = Array.isArray(arr) ? arr.find((x) => x && (x.id === p.model || x.name === p.model)) : null;
+      const n = hit && (hit.context_length || hit.context_window || hit.max_context_tokens || hit.context_window_tokens);
+      if (n) ctx = n.toLocaleString() + ' token ≈ ' + Math.round(n / 1.5).toLocaleString() + ' 汉字';
+    }
+  } catch (_) { /* 忽略 */ }
+  put('⑧ 上下文上限', ctx);
+
+  /* 9. 严格 JSON */
+  let jsonOK = '否';
+  try {
+    const rj = await fetch(url, {
+      method: 'POST', headers: H,
+      body: JSON.stringify({
+        model: p.model, max_tokens: 60, response_format: { type: 'json_object' },
+        messages: [{ role: 'user', content: '输出一个 JSON，字段 ok 值为 1。' }],
+      }),
+    });
+    if (rj.ok) {
+      const txt = await rj.text();
+      let d = null; try { d = JSON.parse(txt); } catch (_) { /* 忽略 */ }
+      const c = d && d.choices && d.choices[0] && d.choices[0].message ? d.choices[0].message.content : '';
+      jsonOK = parseLooseJSON(c) ? '是' : '否（返回的不是干净 JSON）';
+    } else jsonOK = '否（接口不认 response_format：' + rj.status + '）';
+  } catch (_) { jsonOK = '否（请求出错）'; }
+  put('⑨ 严格 JSON 输出', jsonOK);
+
+  /* 10. 固定样本试跑 */
+  const lines = SAMPLE.map((s, i) => '[' + (i + 1) + '] ' + s.ts + ' ' + s.text).join('\n');
+  let sample = '', pass = false, verdict = '';
+  const r4 = await callChat(p, {
+    json: true, max_tokens: 700,
+    messages: [
+      { role: 'system', content: DISCIPLINE + '\n\n' + PROMPT_TAIL },
+      { role: 'user', content: '以下是需要总结的碎片：\n\n' + lines },
+    ],
+  });
+  if (!r4.ok) {
+    sample = r4.detail || String(r4.status);
+    verdict = '样本没跑起来，通道不完整，不能用来写总结。';
+  } else {
+    sample = r4.text;
+    const obj = parseLooseJSON(r4.text);
+    const bad = VIOLATION.test(r4.text);
+    if (!obj) {
+      verdict = '样本跑了，但没给出能用的 JSON。写总结时要靠容错解析，稳定性差一截。';
+    } else if (bad) {
+      verdict = '样本跑通了，但它越界了：出现了对人格的判断词。这条通道写出来的总结不能进你的记忆。';
+    } else {
+      const n = ['echo', 'gather', 'place', 'handback'].reduce((a, k) => a + ((obj[k] || []).length), 0);
+      pass = n > 0;
+      verdict = pass
+        ? '样本跑通了，而且守规矩：只引原话，没有对人格下判断。这条通道可以用来写总结。'
+        : '样本跑通了，守规矩，但什么都没说。可能提示词需要调。';
+    }
+  }
+  put('⑩ 固定样本试跑', pass ? '守纪律' : '有问题');
+
+  return { at: now(), model: p.model, pass, rows, verdict, sample: String(sample).slice(0, 600) };
+}
+
+/* ───────────── 导出 / 导入（共识 11.5 / 11.6） ───────────── */
+
+const EXPORT_VER = 1;
+const EXPORT_TABLES = ['evidence', 'attachment', 'chat', 'summary', 'feedback', 'judgment'];
+
+function buildJSONL() {
+  const out = [];
+  out.push({
+    v: EXPORT_VER, t: '_head', app: '碎片记忆', lang: 'zh-CN',
+    exported_at: ISO(),
+    counts: EXPORT_TABLES.reduce((a, k) => { a[k] = (S[k === 'summary' ? 'summaries' : k] || []).length; return a; }, {}),
+    note: 'provider（含密钥）不在此文件中。',
+  });
+  for (const table of EXPORT_TABLES) {
+    const rows = table === 'summary' ? S.summaries : S[table];
+    for (const r of (rows || [])) {
+      const o = {};
+      for (const k of Object.keys(r).slice().sort()) {
+        if (table === 'provider' && k === 'api_key') continue;
+        o[k] = r[k];
+      }
+      out.push(Object.assign({ v: EXPORT_VER, t: table }, o));
+    }
+  }
+  return out.map((o) => JSON.stringify(o)).join('\n') + '\n';
+}
+
+function buildMarkdown() {
+  const L = [];
+  L.push('# 碎片记忆 · 导出');
+  L.push('');
+  L.push('导出时间：' + new Date().toLocaleString('zh-CN'));
+  L.push('');
+  L.push('这是你亲手打的字和她的总结。引用只认你亲手打的字。');
+  L.push('');
+  const days = {};
+  for (const e of S.evidence) (days[e.day] = days[e.day] || []).push(e);
+  for (const d of Object.keys(days).sort()) {
+    L.push('## ' + d);
+    L.push('');
+    for (const e of days[d].sort((a, b) => a.ts - b.ts)) {
+      const src = e.source === 'typed' ? '' :
+        (e.source === 'conversation' ? ' （从对话记入）' : ' （' + e.source + '）');
+      L.push('- `' + hhmm(e.ts) + '`' + src + ' ' + e.text);
+    }
+    L.push('');
+  }
+  if (S.summaries.length) {
+    L.push('## 她写的总结');
+    L.push('');
+    for (const s of S.summaries.slice().sort((a, b) => a.created_at - b.created_at)) {
+      L.push('### ' + s.day + '（' + new Date(s.created_at).toLocaleString('zh-CN') + '）');
+      L.push('');
+      if ((s.body || {})._local) L.push('_这份没有经过归纳（当时没有可用通道）。_');
+      L.push('');
+      for (const k of ['echo', 'gather', 'place', 'handback']) {
+        const items = (s.body || {})[k] || [];
+        if (!items.length) continue;
+        L.push('**' + KOU[k] + '**');
+        L.push('');
+        for (const it of items) L.push('- ' + it.text + (it.eids && it.eids.length ? '（' + it.eids.length + ' 条原话）' : ''));
+        L.push('');
+      }
+    }
+  }
+  return L.join('\n');
+}
+
+function download(filename, text, mime) {
+  try {
+    const blob = new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    return true;
+  } catch (e) {
+    toast('这个浏览器不让下载，试试在手机浏览器里打开');
+    return false;
+  }
+}
+
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+}
+
+async function exportJSONL() {
+  const text = buildJSONL();
+  if (!download('碎片记忆-' + stamp() + '.jsonl', text, 'application/x-ndjson')) return;
+  S.lastExportAt = now();
+  await metaSet('lastExportAt', S.lastExportAt);
+  renderSettings();
+  toast('导出 ' + bytes(new Blob([text]).size) + '，存到手机文件里');
+}
+
+async function exportMarkdown() {
+  const text = buildMarkdown();
+  if (!download('碎片记忆-' + stamp() + '.md', text, 'text/markdown')) return;
+  S.lastExportAt = now();
+  await metaSet('lastExportAt', S.lastExportAt);
+  renderSettings();
+  toast('导出可读版');
+}
+
+/* 导入：按 id 合并，同 id 不覆盖，不删任何现有数据 */
+function importJSONL(text) {
+  const report = { added: {}, skipped: {}, lines: 0, bad: 0, unknown: [] };
+  const batches = {};
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    report.lines++;
+    let o;
+    try { o = JSON.parse(line); } catch (_) { report.bad++; continue; }
+    const t = o && o.t;
+    if (!t || t === '_head') continue;
+    if (!STORES[t] || t === 'provider' || t === 'meta') { report.unknown.push(t); continue; }
+    delete o.t; delete o.v;
+    (batches[t] = batches[t] || []).push(o);
+  }
+  return { report, batches };
+}
+
+async function applyImport(batches, report) {
+  for (const table of Object.keys(batches)) {
+    report.added[table] = report.added[table] || 0;
+    report.skipped[table] = report.skipped[table] || 0;
+    for (const rec of batches[table]) {
+      if (!rec || !rec.id) { report.bad++; continue; }
+      const isNew = await dbAddIfNew(table, rec);
+      if (isNew) report.added[table]++; else report.skipped[table]++;
+    }
+  }
+  return report;
+}
+
+async function importFile(file) {
+  let text = '';
+  try { text = await file.text(); } catch (_) { toast('读不了这个文件'); return; }
+  const { report, batches } = importJSONL(text);
+  if (report.bad && !Object.keys(batches).length) {
+    toast('这个文件读不出内容（' + report.bad + ' 行解析失败）');
+    return;
+  }
+  const addN = Object.values(batches).reduce((a, b) => a + b.length, 0);
+  const ok = (typeof confirm === 'function')
+    ? confirm('这个文件里有 ' + addN + ' 条记录。\n导入会按 id 合并：重复的会跳过，现有的不会删。\n\n继续吗？')
+    : true;
+  if (!ok) return;
+  await applyImport(batches, report);
+  await reloadInto();
+  S.view = 'settings';
+  renderAll();
+  const parts = Object.keys(report.added).map((k) =>
+    k + ' 新增 ' + report.added[k] + ' / 跳过 ' + (report.skipped[k] || 0));
+  toast('导入完成：' + (parts.join('，') || '没有可导入的记录'), 4000);
+}
+
+/* ───────────── 持久化存储 ───────────── */
+
+async function requestPersist() {
+  try {
+    if (!navigator.storage || !navigator.storage.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch (_) { return false; }
+}
+
+/* 「打开即见」的检查已并入总结屏：renderBanner 只指路，生成按钮在总结屏上 */
+
+/* ───────────── 装配 ───────────── */
+
+async function reloadInto() {
+  S.evidence = (await dbAll('evidence')).sort((a, b) => b.ts - a.ts);
+  S.chat = await dbAll('chat');
+  S.summaries = await dbAll('summary');
+  S.feedback = await dbAll('feedback');
+  S.attachments = await dbAll('attachment');
+  S.providers = await dbAll('provider');
+  S.lastExportAt = (await metaGet('lastExportAt')) || 0;
+  S.kouOff = (await metaGet('kouOff')) || [];
+  if (S.persisted === undefined) {
+    try { S.persisted = (navigator.storage && navigator.storage.persisted) ? await navigator.storage.persisted() : undefined; }
+    catch (_) { S.persisted = undefined; }
+  }
+  const dot = $('tab-dot');
+  if (dot) dot.hidden = !S.summaries.some((s) => s.unread);
+}
+
+async function reload() { await reloadInto(); renderAll(); }
+
+/* 标签栏 + 屏的显隐。只在「当前在哪一屏」变了的时候需要。 */
+function renderTabs() {
+  document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('on', el.id === 's-' + S.view));
+  document.querySelectorAll('.tab').forEach((el) => el.classList.toggle('on', el.dataset.view === S.view));
+  const dot = $('tab-dot');
+  if (dot) dot.hidden = !S.summaries.some((x) => x.unread);
+}
+
+/* 只重画当前这一屏。
+   数据一变就重画全部五屏是很贵的——每屏都重建 innerHTML，
+   对话屏和总结屏还各带一个长列表。切标签只该重画要看的那一屏。 */
+function renderView() {
+  if (S.view === 'record') renderRecord();
+  else if (S.view === 'summary') renderSummaryPage();
+  else if (S.view === 'chat') renderChat();
+  else if (S.view === 'settings') renderSettings();
+  renderTabs();
+}
+
+/* 五屏全画。只用在数据被整体换掉之后（启动、导入、恢复备份）。 */
+function renderAll() {
+  renderTabs();
+  renderRecord();
+  renderSummaryPage();
+  renderChat();
+  renderSettings();
+}
+
+function switchView(v) {
+  S.view = v;
+  renderTabs();
+  if (v === 'summary') {
+    renderSummaryPage();
+    // 「打开即见」：看过就算读过（共识 6.3）
+    const all = S.summaries.slice().sort((a, b) => b.created_at - a.created_at);
+    const shown = S.sumId ? all.find((s) => s.id === S.sumId) : all[0];
+    if (shown && shown.unread) markSummaryRead(shown).then(() => renderSummaryPage());
+  }
+  if (v === 'chat') {
+    // 进这个标签一律回到「对话」模式。
+    // 标签上写的是「对话」，进来却还是上次的评价模式，会让人以为自己看错了屏。
+    S.mode = 'chat';
+    renderChat();
+  }
+  if (v === 'settings') renderSettings();
+  window.scrollTo(0, 0);
+}
+
+function wireGlobal() {
+  $('tabs').addEventListener('click', (e) => {
+    const t = e.target.closest('.tab');
+    if (t) switchView(t.dataset.view);
+  });
+  $('rec-text').addEventListener('input', () => {
+    $('rec-save').disabled = !$('rec-text').value.trim() && !pendingFiles.length;
+  });
+  // 输入屏回车即存（桌面调试用；手机上换行更重要，所以只在无换行时拦）
+  $('rec-text').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveRecord(); }
+  });
+  $('rec-save').addEventListener('click', saveRecord);
+  $('rec-file').addEventListener('click', () => $('rec-input').click());
+  $('rec-input').addEventListener('change', (e) => {
+    pendingFiles = pendingFiles.concat(Array.from(e.target.files || []));
+    e.target.value = '';
+    renderRecord();
+  });
+  $('rec-chips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rm]');
+    if (!b) return;
+    pendingFiles.splice(Number(b.dataset.rm), 1);
+    renderRecord();
+  });
+
+  // 对话屏：模式切换 + 发送
+  $('talk-modes').addEventListener('click', (e) => {
+    const b = e.target.closest('.mode');
+    if (!b || b.dataset.mode === S.mode) return;
+    S.mode = b.dataset.mode;
+    renderChat();
+  });
+  $('chat-text').addEventListener('input', () => {
+    $('chat-send').disabled = !$('chat-text').value.trim() || S.busy;
+  });
+  // 回车即发（Shift+回车换行）。这一屏是聊天，回车就该发出去。
+  $('chat-text').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTalk(); }
+  });
+  $('chat-send').addEventListener('click', sendTalk);
+
+  window.addEventListener('pagehide', () => { /* 预留 */ });
+}
+
+/* 注册 service worker：只在 https / localhost 下会成功。
+   失败不报错——局域网 http 上打开时本该失败。 */
+function registerSW() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    if (!/^https?:$/.test(location.protocol)) return;
+    navigator.serviceWorker.register('sw.js').catch(() => { /* 静默 */ });
+  } catch (_) { /* 静默 */ }
+}
+
+async function boot() {
+  try {
+    await openDB();
+  } catch (e) {
+    document.body.innerHTML = '<div style="padding:40px 20px;line-height:1.9">' +
+      '<b>打不开本地数据库。</b><br>如果你是把 html 文件直接发给手机打开的，Chrome 不允许本地文件写数据。<br>' +
+      '要用 http/https 打开才行。</div>';
+    return;
+  }
+  app.db = DBH;
+  await reloadInto();
+  wireGlobal();
+  renderAll();
+  registerSW();
+  autoWrite();
+  requestPersist().then((ok) => { if (ok) S.persisted = true; });
+}
+
+if (typeof window !== 'undefined') window.SM = app;
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+}
+</script>
+</body>
+</html>
